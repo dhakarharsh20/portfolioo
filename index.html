@@ -198,6 +198,7 @@
             pointer-events: none;
         }
         .hero-content {
+            position: relative;
             z-index: 2;
             opacity: 0; /* for GSAP fade in */
             display: flex;
@@ -248,6 +249,25 @@
             max-width: 500px;
             margin-bottom: 4rem;
             line-height: 1.6;
+        }
+
+        .hero-canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #ffffff;
+            z-index: 0;
+            pointer-events: none;
+            opacity: 1; 
+        }
+        #hero-frame-canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+            mix-blend-mode: multiply; 
         }
         
         .ctas {
@@ -742,7 +762,7 @@
     <div class="cursor-follower"></div>
 
     <nav id="navbar">
-        <div class="logo">HD.</div>
+        <div class="logo"><img src="./assets/logo.png" alt="HD Logo" style="height: 36px; width: auto; display: block;"></div>
         <div class="menu-toggle" id="mobile-menu-btn">
             <span></span>
             <span></span>
@@ -757,13 +777,20 @@
     </nav>
 
     <section class="hero">
+        <!-- Scrollytelling Absolute Background Canvas -->
+        <div class="hero-canvas-container">
+            <canvas id="hero-frame-canvas"></canvas>
+        </div>
+
         <div class="hero-bg-accent"></div>
+
         <div class="hero-content">
             <p class="subtitle">Content • Copy • Storytelling • AI-Led Growth</p>
             <h1 style="position: relative; z-index: 10;">
                 <span id="name-text" style="opacity: 0; display: inline-block; white-space: nowrap;">HARSH DHAKAR</span>
                 <canvas id="name-particles" style="position: absolute; pointer-events: none; z-index: 10;"></canvas>
             </h1>
+            
             <p class="lead">I design content systems that build attention, trust, and action.</p>
             <p class="sub-lead">I don’t just create content.<br>I build clarity, positioning, and growth through words.</p>
             
@@ -1076,9 +1103,12 @@
         // --- Cinematic Hero Sequence ---
         gsap.set(".hero-content", { opacity: 1 }); 
         const heroTl = gsap.timeline();
-        heroTl.from(".hero .subtitle", {
-            opacity: 0, x: -20, duration: 1, ease: "power3.out", delay: 0.2
-        })
+        heroTl.from(".hero-canvas-container", {
+            opacity: 0, scale: 1.05, duration: 2, ease: "power2.out"
+        }, "0")
+        .from(".hero .subtitle", {
+            opacity: 0, x: -20, duration: 1, ease: "power3.out"
+        }, "-=1.5")
         .from(".hero h1", {
             opacity: 0, y: 40, duration: 1.4, ease: "power4.out"
         }, "-=0.6")
@@ -1088,6 +1118,50 @@
         .from(".hero .ctas .btn", {
             opacity: 0, y: 20, duration: 0.8, stagger: 0.1, ease: "power3.out"
         }, "-=0.6");
+
+        // --- Frames Canvas Scrolling Animation ---
+        const frameCount = 160;
+        const currentFrame = index => `./frames/ezgif-frame-${String(index + 1).padStart(3, '0')}.png`;
+        const images = [];
+        const framesConfig = { frame: 0 };
+        const heroCanvas = document.getElementById("hero-frame-canvas");
+        
+        if (heroCanvas) {
+            const ctxFrames = heroCanvas.getContext("2d");
+            
+            // Preload images
+            for (let i = 0; i < frameCount; i++) {
+                const img = new Image();
+                img.src = currentFrame(i);
+                images.push(img);
+            }
+
+            images[0].addEventListener('load', () => {
+                heroCanvas.width = images[0].width;
+                heroCanvas.height = images[0].height;
+                ctxFrames.drawImage(images[0], 0, 0);
+            });
+
+            gsap.to(framesConfig, {
+                frame: frameCount - 1,
+                snap: "frame",
+                ease: "none",
+                scrollTrigger: {
+                    trigger: ".hero",
+                    start: "top top",
+                    end: "+=300%", 
+                    scrub: 0.5,
+                    pin: true,
+                    anticipatePin: 1
+                },
+                onUpdate: () => {
+                    if (images[framesConfig.frame] && images[framesConfig.frame].complete) {
+                        ctxFrames.clearRect(0, 0, heroCanvas.width, heroCanvas.height);
+                        ctxFrames.drawImage(images[framesConfig.frame], 0, 0);
+                    }
+                }
+            });
+        }
 
         // --- Image Parallax & Hover Interactions ---
         gsap.utils.toArray('.work-card img').forEach(img => {
